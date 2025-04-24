@@ -15,50 +15,56 @@ export const getCompanies = async (req, res) => {
         let countParams = [];
 
         if (search && search !== "") {
-            const searchWildcard = `%${search}%`;
+           const searchWildcard = `%${search}%`;
 
             query = `
-                SELECT DISTINCT
-                     ct.cik,     MAX(ct.ticker) AS ticker,     MAX(s.name)    AS name
-                FROM 
-                    cik_ticker AS ct
-               JOIN sub AS s   ON s.cik = ct.cik GROUP BY ct.cik ORDER BY ticker ASC
+                SELECT
+                    ct.cik,
+                    MAX(ct.ticker) AS ticker,
+                    MAX(s.name) AS name
+                FROM cik_ticker AS ct
+                JOIN sub AS s ON s.cik = ct.cik
+                WHERE s.name LIKE ? OR ct.ticker LIKE ? OR ct.cik LIKE ?
+                GROUP BY ct.cik
+                ORDER BY ticker ASC
                 LIMIT ? OFFSET ?;
             `;
 
             countQuery = `
-                SELECT COUNT(DISTINCT cik_ticker.cik) AS total 
-                FROM 
-                    cik_ticker
-                INNER JOIN 
-                    sub 
-                ON cik_ticker.cik = sub.cik
-                WHERE 
-                    sub.name LIKE ? 
-                    OR cik_ticker.ticker LIKE ? 
-                    OR cik_ticker.cik LIKE ?;
+                SELECT COUNT(*) AS total FROM (
+                    SELECT ct.cik
+                    FROM cik_ticker AS ct
+                    JOIN sub AS s ON s.cik = ct.cik
+                    WHERE s.name LIKE ? OR ct.ticker LIKE ? OR ct.cik LIKE ?
+                    GROUP BY ct.cik
+                ) AS counted;
             `;
 
             queryParams = [searchWildcard, searchWildcard, searchWildcard, limit, offset];
             countParams = [searchWildcard, searchWildcard, searchWildcard];
         } else {
             query = `
-                SELECT DISTINCT
-                    ct.cik,     MAX(ct.ticker) AS ticker,     MAX(s.name)    AS name FROM cik_ticker AS ct JOIN sub AS s   ON s.cik = ct.cik GROUP BY ct.cik ORDER BY ticker ASC
+                SELECT
+                    ct.cik,
+                    MAX(ct.ticker) AS ticker,
+                    MAX(s.name) AS name
+                FROM cik_ticker AS ct
+                JOIN sub AS s ON s.cik = ct.cik
+                GROUP BY ct.cik
+                ORDER BY ticker ASC
                 LIMIT ? OFFSET ?;
             `;
 
             countQuery = `
-                SELECT COUNT(DISTINCT cik_ticker.cik) AS total 
-                FROM 
-                    cik_ticker
-                INNER JOIN 
-                    sub 
-                ON cik_ticker.cik = sub.cik;
+                SELECT COUNT(*) AS total FROM (
+                    SELECT ct.cik
+                    FROM cik_ticker AS ct
+                    JOIN sub AS s ON s.cik = ct.cik
+                    GROUP BY ct.cik
+                ) AS counted;
             `;
 
             queryParams = [limit, offset];
-            countParams = [];
         }
 
         // Toplam kayıt sayısını al
